@@ -54,7 +54,7 @@ public class TestGyro {
 	static int relAngle;
 	static void turn(int angle){
 
-		NXTRegulatedMotor motor = Motor.B;
+		NXTRegulatedMotor motor = Motor.B; //TODO: ne pas oublier de changer la rotation si on change de moteur pivot
 		angle %= 360;
 		System.out.println("angle demande: " + angle);
 		
@@ -64,7 +64,7 @@ public class TestGyro {
 			sampleProvider.fetchSample(sample, 0);
 			mesure = sample[position_angle_dans_sample];
 			relAngle =  (int) ( (angle - mesure) * 100 / nombre_de_degre_par_rotation_moteur);
-			motor.rotate( relAngle, true);
+			motor.rotate( - relAngle, true);
 			Delay.msDelay(50);
 			//TODO: attention on pourrait rester bloqué, définir un mouvement minimum
 		}while( ( angle > 0 && mesure < angle  )  || ( angle < 0 && mesure > angle) );
