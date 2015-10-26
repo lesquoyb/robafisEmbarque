@@ -51,7 +51,6 @@ public class TestGyro {
 	}
 	
 	
-	static int relAngle;
 	static void turn(int angle){
 
 		NXTRegulatedMotor motor = Motor.B; //TODO: ne pas oublier de changer la rotation si on change de moteur pivot
@@ -60,6 +59,7 @@ public class TestGyro {
 		
 		gyro.reset();//ancrage
 		float mesure;
+		int relAngle;
 		do{
 			sampleProvider.fetchSample(sample, 0);
 			mesure = sample[position_angle_dans_sample];
