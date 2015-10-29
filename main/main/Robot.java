@@ -1,14 +1,14 @@
 package main;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+
 import lejos.hardware.Sound;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.Motor;
 import lejos.hardware.motor.NXTRegulatedMotor;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3GyroSensor;
-import lejos.hardware.sensor.SensorMode;
-import lejos.robotics.Color;
-import lejos.robotics.ColorDetector;
 import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import lejos.utility.TextMenu;
@@ -23,7 +23,6 @@ public class Robot {
 	public static final ReadColor Blue = new ReadColor(0, 0, 255);
 
 
-
 	private SampleProvider colorSampler;
 	private float[] colorSample;
 	private EV3ColorSensor colorSensor;
@@ -33,7 +32,9 @@ public class Robot {
 		colorSample = new float[3];
 	}
 
-	public ReadColor black = new ReadColor(135, 135, 135), white = new ReadColor(255,255,255);
+	public ReadColor black = new ReadColor(12, 12, 12), 
+			white = new ReadColor(224,224,224),
+			objectif = new ReadColor(118, 118, 118);
 	private void calibrateBlackAndWhite(){
 		white = new ReadColor(0, 0, 0);
 		black = new ReadColor(255, 255, 255);
@@ -48,9 +49,8 @@ public class Robot {
 				black = tmp;
 			}
 		}
-
-		//TODO: si on garde le noir comme la limite entre la bande blanche et la bande noire, il faut 
-		// l'incrémenter proportionnellement à white - black
+		int average = white.getAverage() - black.getAverage();
+		objectif = new ReadColor(average, average, average);
 	}
 	public ReadColor readColor(){
 		colorSampler.fetchSample(colorSample, 0);
@@ -83,15 +83,36 @@ public class Robot {
 		nombre_de_degre_par_rotation_moteur = (int)gyroSample[position_angle_dans_sample];
 	}
 
+	
+	public void lol(){
+		
+ 
+	}
 
+	
+	public enum Modes {Teleguide, FollowLine};
 
-	public Robot(){
+	
+	public Modes mode;
+	private ServerSocket Server ;
+	public Robot() throws IOException{
+
+		mode = Modes.FollowLine;
+		initBluetooth();
 		initColorSensor();
 		//initGyro();
 	}
 
 
+	private void initBluetooth() throws IOException{
+		
+		BluetoothServer server = new BluetoothServer(this);
+		Thread t = new Thread(server);
+		t.start();
+		
+	}
 
+	
 	public void close(){
 		colorSensor.close();
 		gyro.close();
@@ -149,37 +170,43 @@ public class Robot {
 	public void followLine(ReadColor color) throws Exception{
 
 
-		int baseSpeed = 1000;
+		int baseSpeed = 300,
+			A_FOND = 500;
 
 
-		double kp = 1.2; //TODO: tester différentes valeurs
-		double ki = 0; //TODO: idem
-		double kd = 1; //TODO: idem
+		double kp = 1; //TODO: tester différentes valeurs
+		double ki = 1; //TODO: idem
+		double kd = 2; //TODO: idem
 
 		double virage;
 
 
 		double error, sum_errors = 0, last_error = 0, delta_error;
 
-		ReadColor read1 = readColor(), read2 ;
+		ReadColor read = readColor() ;
 
 		motorL.backward();
 		motorR.backward();
+		
+		int range = white.getAverage() - black.getAverage();
 
+		double lol;
 		colorSensor.setFloodlight(true);
-		while( ! colorDetected(read1, color) ){
+		while( ! colorDetected(read, color) ){
+			
+			read = readColor();
 
-			read1 = readColor();
-
-			error = black.getAverage() - read1.getAverage();
+			error = objectif.getAverage() - read.getAverage();
 			sum_errors += error;
 			delta_error = error - last_error;
 			last_error = error;
 
 			virage = kp * error + ki * sum_errors + kd * delta_error;
+
+			System.out.println(virage);
 			
-			motorL.setSpeed((int) Math.min( Math.max(  - virage, 50), 720));//TODO: ralentir dans les virages
-			motorR.setSpeed((int) Math.min( Math.max(  virage, 50), 720));
+			motorL.setSpeed((int) Math.min( Math.max( - virage, 150), 720));//TODO: ralentir dans les virages
+			motorR.setSpeed((int) Math.min( Math.max(   virage, 150), 720));
 
 			Delay.msDelay(10);
 
