@@ -19,11 +19,6 @@ import lejos.utility.TextMenu;
 
 public class Robot {
 
-	public static final ReadColor Red = new ReadColor(255, 0, 0);
-	public static final ReadColor Yellow = new ReadColor(255, 255, 0);
-	public static final ReadColor Green = new ReadColor(0, 255, 0);
-	public static final ReadColor Blue = new ReadColor(0, 0, 255);
-
 
 	private SampleProvider colorSampler;
 	private float[] colorSample;
@@ -58,7 +53,9 @@ public class Robot {
 		colorSampler.fetchSample(colorSample, 0);
 		return new ReadColor(Math.min( (int) (colorSample[0]*255), 255), 
 				Math.min( (int) (colorSample[0]*255), 255),
-				Math.min( (int) (colorSample[0]*255), 255)); //TODO: valide seulement avec lecture d'une couleur
+				Math.min( (int) (colorSample[0]*255), 255)); 
+		//valide seulement avec lecture d'une couleur
+		//TODO: avec les trois													
 	}
 
 
@@ -92,13 +89,10 @@ public class Robot {
 	public enum Modes {Teleguide, FollowLine};
 
 	
-	public Modes mode;
-	private ServerSocket Server ;
 	public Robot() throws Exception{
 
 		//initBluetooth();
 		initColorSensor();
-		//setMode(Modes.FollowLine);
 		//initGyro();
 	}
 
@@ -126,38 +120,6 @@ public class Robot {
 	}
 	
 	
-	Thread threadFollowLine = new Thread(new Runnable() {
-		
-		@Override
-		public void run() {
-			try {
-				System.out.println("follow line");
-				followLine(Red);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	});
-	public void setMode(Modes m) throws Exception{
-		if(m != mode){
-			mode = m;
-
-			threadFollowLine.interrupt();
-			
-			switch (m){
-			case FollowLine:
-				threadFollowLine.start();
-				break;
-				
-			case Teleguide:
-				
-				break;
-				
-				default:
-					throw new Exception("mode non géré");
-			}
-		}
-	}
 
 	public void choisirScenario() throws Exception{
 		String[] menu = new String[]{"Rouge","Vert","Jaune", "Calibrer", "Quitter"};
@@ -166,15 +128,15 @@ public class Robot {
 		ReadColor selectedColor = null;
 		switch(menu[index]){
 		case "Rouge":
-			selectedColor = Red;
+			selectedColor = ReadColor.Red;
 			break;
 
 		case "Vert":
-			selectedColor = Green;				
+			selectedColor = ReadColor.Green;				
 			break;
 
 		case "Jaune":
-			selectedColor = Yellow;
+			selectedColor = ReadColor.Yellow;
 			break;
 		case "Calibrer":
 			m.quit();
@@ -191,27 +153,22 @@ public class Robot {
 		followLine(selectedColor);
 	}
 
-	public final ReadColor presqueRouge = new ReadColor(200, 200, 200);
+
 	private boolean colorDetected(ReadColor read, ReadColor goal) throws Exception{
-		if(read.isDarkerThan(presqueRouge)){
-			//TODO
-		}
+		//TODO
+		colorSensor.setFloodlight(lejos.robotics.Color.BLUE);
+		
 		return false;
 	}
 
 
-	private long start;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
-	private int maxBaseSpeed = 250;
-	private double 	kpBend= .25, 	kpNormal = 1.5,
-					kiBend= 0,	 	kiNormal = 0.0,
-					kdBend= 0,		kdNormal = 0;
 	public void followLine(ReadColor color) throws Exception{
 
 		//TODO: si pas vue noir depuis longtemps, arrêt et recherche
 		
-		int baseSpeed = maxBaseSpeed,
-				minSpeed = 20;
+		int baseSpeed = 250,
+			minSpeed = 20;
 
 
 		double kp ,ki, kd ;
@@ -234,12 +191,11 @@ public class Robot {
 		int range = white.getAverage() - black.getAverage();
 
 		colorSensor.setFloodlight(true);
-		start = Calendar.getInstance().getTimeInMillis();
 		
-		baseSpeed = maxBaseSpeed;
-		kp = kpBend;
-		ki = kiBend;
-		kd = kdBend;
+		baseSpeed = 250;
+		kp = .25;
+		ki = 0;
+		kd = 0;
 		
 		int marge = 50;
 		long begin = Calendar.getInstance().getTimeInMillis();
@@ -258,7 +214,7 @@ public class Robot {
 			//TODO: limiter ki * sum_errors
 			if( read.getAverage()  >= (white.getAverage() - marge) ){
 				if (  Calendar.getInstance().getTimeInMillis() - begin >= 600 ){
-					f();
+					takeBend();
 					begin = Calendar.getInstance().getTimeInMillis();
 				}
 			}
@@ -281,10 +237,11 @@ public class Robot {
 	}
 	
 	
-	private void f(){
+	private void takeBend(){
 		motorL.setSpeed(300);
 		motorR.setSpeed(1);
 		ReadColor read = readColor();
+		
 		do{
 			Delay.msDelay(delay);
 			read = readColor();
@@ -297,40 +254,7 @@ public class Robot {
 			
 	}
 	
-	private long timeFirstBend = 1000;
 	
-	private double adaptCoef(int currentSpeed,double bendCoef, double normalCoef){
-		/*
-		if( Calendar.getInstance().getTimeInMillis() - start >= timeFirstBend ){
-			return bendCoef;
-		}
-		else{
-			return normalCoef;
-		}
-		*/
-		return bendCoef;
-		//return maxCoef - (currentSpeed/(double)maxBaseSpeed) * (maxCoef - minCoef);
-	}
-	
-	private int adaptBaseSpeed(int baseSpeed){
-		/*
-		if( Calendar.getInstance().getTimeInMillis() - start >= timeFirstBend ){
-			return 0;
-		}
-		else{
-			return baseSpeed;
-		}
-		*/
-		return 0;
-		
-		//TODO: ça c'est une version qui modifie la vitesse en fonction du temps, ce serait surement mieux sur la version finale d'avoir 
-		//		une fonction qui le fasse en fonction du nombre de rotation du moteur
-		//      + là c'est assez naze de toute façon, une fonction logarithmique serait mieux
-		//return (int) (baseSpeed * (1.0- (1 * delay/(double)1000) ));
-	}
-
-
-
 
 	public void turn(int angle){
 

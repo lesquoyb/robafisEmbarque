@@ -20,7 +20,7 @@ public class Main {
 		
 		Robot robot = new Robot();
 		
-		//robot.followLine(robot.Red);
+		robot.followLine(ReadColor.Red);
 		
 		while(true){
 			System.out.println(robot.readColor().getAverage());

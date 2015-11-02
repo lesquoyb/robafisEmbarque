@@ -15,7 +15,7 @@ public class ExpertParserDirection extends ExpertParser {
 	
 	@Override
 	public boolean _parse(String toParse, Robot robot) {
-		if( toParse.startsWith("move:") && robot.mode == Modes.Teleguide){
+		if( toParse.startsWith("move:") ){
 
 			double x_speed, y_speed;
 			

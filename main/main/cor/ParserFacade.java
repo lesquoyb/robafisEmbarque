@@ -19,27 +19,6 @@ public class ParserFacade {
 	public ParserFacade(){
 		
 		first = new ExpertParserDirection();
-		first.ajouterSuivant(new ExpertParser() {
-			
-			@Override
-			public boolean _parse(String toParse, Robot robot)  {
-				try {
-					if( toParse.equals("a") ){
-						
-							robot.setMode(Modes.Teleguide);
-						return true;
-					}
-					else if (toParse.equals("b")){
-						robot.setMode(Modes.FollowLine);
-						return true;
-					}
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				return false;
-			}
-		});
 		first.ajouterSuivant(new ExpertParserSpeed());
 		first.ajouterSuivant(new ExpertParserMode());
 		
