@@ -2,19 +2,20 @@ package main.cor;
 
 import lejos.hardware.motor.Motor;
 import main.Robot;
+import main.Robot.Modes;
 
 public class ExpertParserDirection extends ExpertParser {
 
 	
 
-	static final double dead_zone = 0.1;
-	static final int XMAXSPEED = 400;
+	static final double dead_zone = 0.2;
+	static final int XMAXSPEED = 500;
 	static final int YMAXSPEED = 300;
 	
 	
 	@Override
 	public boolean _parse(String toParse, Robot robot) {
-		if( toParse.startsWith("move:")){
+		if( toParse.startsWith("move:") && robot.mode == Modes.Teleguide){
 
 			double x_speed, y_speed;
 			

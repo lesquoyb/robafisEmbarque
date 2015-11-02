@@ -2,6 +2,8 @@ package main;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.Calendar;
+import java.util.Date;
 
 import lejos.hardware.Sound;
 import lejos.hardware.ev3.LocalEV3;
@@ -32,9 +34,9 @@ public class Robot {
 		colorSample = new float[3];
 	}
 
-	public ReadColor black = new ReadColor(12, 12, 12), 
-			white = new ReadColor(224,224,224),
-			objectif = new ReadColor(118, 118, 118);
+	public ReadColor black = new ReadColor(15, 15, 15), 
+			white = new ReadColor(255,255,255),
+			objectif = new ReadColor(135, 135, 135);
 	private void calibrateBlackAndWhite(){
 		white = new ReadColor(0, 0, 0);
 		black = new ReadColor(255, 255, 255);
@@ -84,10 +86,7 @@ public class Robot {
 	}
 
 	
-	public void lol(){
-		
- 
-	}
+
 
 	
 	public enum Modes {Teleguide, FollowLine};
@@ -95,11 +94,11 @@ public class Robot {
 	
 	public Modes mode;
 	private ServerSocket Server ;
-	public Robot() throws IOException{
+	public Robot() throws Exception{
 
-		mode = Modes.FollowLine;
-		initBluetooth();
+		//initBluetooth();
 		initColorSensor();
+		//setMode(Modes.FollowLine);
 		//initGyro();
 	}
 
@@ -124,6 +123,40 @@ public class Robot {
 		System.out.println("black: " + black + "\n white: " +white);
 		Delay.msDelay(10000);
 		calibrateGyro();
+	}
+	
+	
+	Thread threadFollowLine = new Thread(new Runnable() {
+		
+		@Override
+		public void run() {
+			try {
+				System.out.println("follow line");
+				followLine(Red);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	});
+	public void setMode(Modes m) throws Exception{
+		if(m != mode){
+			mode = m;
+
+			threadFollowLine.interrupt();
+			
+			switch (m){
+			case FollowLine:
+				threadFollowLine.start();
+				break;
+				
+			case Teleguide:
+				
+				break;
+				
+				default:
+					throw new Exception("mode non géré");
+			}
+		}
 	}
 
 	public void choisirScenario() throws Exception{
@@ -167,16 +200,21 @@ public class Robot {
 	}
 
 
+	private long start;
+	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
+	private int maxBaseSpeed = 250;
+	private double 	kpBend= .25, 	kpNormal = 1.5,
+					kiBend= 0,	 	kiNormal = 0.0,
+					kdBend= 0,		kdNormal = 0;
 	public void followLine(ReadColor color) throws Exception{
 
+		//TODO: si pas vue noir depuis longtemps, arrêt et recherche
+		
+		int baseSpeed = maxBaseSpeed,
+				minSpeed = 20;
 
-		int baseSpeed = 300,
-			A_FOND = 500;
 
-
-		double kp = 1; //TODO: tester diffÃ©rentes valeurs
-		double ki = 1; //TODO: idem
-		double kd = 2; //TODO: idem
+		double kp ,ki, kd ;
 
 		double virage;
 
@@ -185,13 +223,27 @@ public class Robot {
 
 		ReadColor read = readColor() ;
 
+		motorL.setSpeed(1);
+		motorR.setSpeed(1);
+		//motorL.setAcceleration(12000);
+		//motorR.setAcceleration(12000);
+		
 		motorL.backward();
 		motorR.backward();
 		
 		int range = white.getAverage() - black.getAverage();
 
-		double lol;
 		colorSensor.setFloodlight(true);
+		start = Calendar.getInstance().getTimeInMillis();
+		
+		baseSpeed = maxBaseSpeed;
+		kp = kpBend;
+		ki = kiBend;
+		kd = kdBend;
+		
+		int marge = 50;
+		long begin = Calendar.getInstance().getTimeInMillis();
+		
 		while( ! colorDetected(read, color) ){
 			
 			read = readColor();
@@ -203,18 +255,78 @@ public class Robot {
 
 			virage = kp * error + ki * sum_errors + kd * delta_error;
 
-			System.out.println(virage);
+			//TODO: limiter ki * sum_errors
+			if( read.getAverage()  >= (white.getAverage() - marge) ){
+				if (  Calendar.getInstance().getTimeInMillis() - begin >= 600 ){
+					f();
+					begin = Calendar.getInstance().getTimeInMillis();
+				}
+			}
+			else{
+				begin = Calendar.getInstance().getTimeInMillis();
+			}
 			
-			motorL.setSpeed((int) Math.min( Math.max( - virage, 150), 720));//TODO: ralentir dans les virages
-			motorR.setSpeed((int) Math.min( Math.max(   virage, 150), 720));
+			//System.out.println(virage + " " + kp + " " +  ki + " " + kd);
+			motorL.setSpeed((int) Math.min( Math.max( baseSpeed - virage, minSpeed), 720));
+			motorR.setSpeed((int) Math.min( Math.max(  baseSpeed +  virage, minSpeed), 720));
 
-			Delay.msDelay(10);
+			Delay.msDelay(delay);
 
 		}
+	
 		motorL.stop();
 		motorR.stop();
 
 		Sound.beep();
+	}
+	
+	
+	private void f(){
+		motorL.setSpeed(300);
+		motorR.setSpeed(1);
+		ReadColor read = readColor();
+		do{
+			Delay.msDelay(delay);
+			read = readColor();
+		}while(read.getAverage() >= black.getAverage() + 50);
+		
+		do{
+			read = readColor(); 
+			Delay.msDelay(delay);
+		}while(read.getAverage() <= black.getAverage() + 50);
+			
+	}
+	
+	private long timeFirstBend = 1000;
+	
+	private double adaptCoef(int currentSpeed,double bendCoef, double normalCoef){
+		/*
+		if( Calendar.getInstance().getTimeInMillis() - start >= timeFirstBend ){
+			return bendCoef;
+		}
+		else{
+			return normalCoef;
+		}
+		*/
+		return bendCoef;
+		//return maxCoef - (currentSpeed/(double)maxBaseSpeed) * (maxCoef - minCoef);
+	}
+	
+	private int adaptBaseSpeed(int baseSpeed){
+		/*
+		if( Calendar.getInstance().getTimeInMillis() - start >= timeFirstBend ){
+			return 0;
+		}
+		else{
+			return baseSpeed;
+		}
+		*/
+		return 0;
+		
+		//TODO: ça c'est une version qui modifie la vitesse en fonction du temps, ce serait surement mieux sur la version finale d'avoir 
+		//		une fonction qui le fasse en fonction du nombre de rotation du moteur
+		//      + là c'est assez naze de toute façon, une fonction logarithmique serait mieux
+		//return (int) (baseSpeed * (1.0- (1 * delay/(double)1000) ));
 	}
 
 

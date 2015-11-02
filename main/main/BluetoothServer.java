@@ -38,7 +38,13 @@ public class BluetoothServer implements Runnable{
 			try {
 				
 				fromclient = bufferReader.readLine();
-				parser.parse(fromclient, robot);
+				System.out.println("received: " + fromclient);
+				if(parser.parse(fromclient, robot)){
+					System.out.println("processed");
+				}
+				else{
+					System.out.println("unprocessed");
+				}
 				
 			} catch (IOException e) {
 				
