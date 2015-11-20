@@ -156,73 +156,64 @@ public class Robot {
 
 	private boolean colorDetected(ReadColor read, ReadColor goal) throws Exception{
 		//TODO
-		colorSensor.setFloodlight(lejos.robotics.Color.BLUE);
+		//colorSensor.setFloodlight(lejos.robotics.Color.BLUE);
 		
 		return false;
 	}
 
 
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
+	private final double wheel_diam = 5.5;
+	private final double perim = wheel_diam * Math.PI;
+	private final double tacho_per_cm = 360/perim;//TODO: cette valeur est fauuuuuuuuuuuuuuuuuuuuuuuuuuuusssssssssseeeeeeeeeeeeeeeeeeee
+	private final double max_cm_in_white = 5.5;
+	private final double marge_cm_in_white = .0; //TODO: j'ai fait à l'arrache, vérifier/affiner les valeurs
+	private long begin;
 	public void followLine(ReadColor color) throws Exception{
-
-		//TODO: si pas vue noir depuis longtemps, arrêt et recherche
 		
-		int baseSpeed = 250,
+		startup();
+		
+		//move_until_white();
+		
+		int baseSpeed = 600,
 			minSpeed = 20;
 
 
-		double kp ,ki, kd ;
-
-		double virage;
-
-
-		double error, sum_errors = 0, last_error = 0, delta_error;
+		double kp , virage, error;
 
 		ReadColor read = readColor() ;
 
-		motorL.setSpeed(1);
-		motorR.setSpeed(1);
-		//motorL.setAcceleration(12000);
-		//motorR.setAcceleration(12000);
-		
-		motorL.backward();
-		motorR.backward();
-		
-		int range = white.getAverage() - black.getAverage();
 
 		colorSensor.setFloodlight(true);
 		
-		baseSpeed = 250;
-		kp = .25;
-		ki = 0;
-		kd = 0;
+		kp = .35;
 		
 		int marge = 50;
-		long begin = Calendar.getInstance().getTimeInMillis();
+		
+		initBegin();
 		
 		while( ! colorDetected(read, color) ){
 			
 			read = readColor();
 
 			error = objectif.getAverage() - read.getAverage();
-			sum_errors += error;
-			delta_error = error - last_error;
-			last_error = error;
-
-			virage = kp * error + ki * sum_errors + kd * delta_error;
-
-			//TODO: limiter ki * sum_errors
+			
+			virage = kp * error ;
+			
 			if( read.getAverage()  >= (white.getAverage() - marge) ){
-				if (  Calendar.getInstance().getTimeInMillis() - begin >= 600 ){
+				System.out.println("blanc");
+				if ( - motorL.getTachoCount() - begin >= tacho_per_cm * (max_cm_in_white+marge_cm_in_white) ){
+				
 					takeBend();
-					begin = Calendar.getInstance().getTimeInMillis();
+
+					System.out.println("virage");
+					initBegin();
 				}
 			}
 			else{
-				begin = Calendar.getInstance().getTimeInMillis();
+				initBegin();
 			}
 			
-			//System.out.println(virage + " " + kp + " " +  ki + " " + kd);
 			motorL.setSpeed((int) Math.min( Math.max( baseSpeed - virage, minSpeed), 720));
 			motorR.setSpeed((int) Math.min( Math.max(  baseSpeed +  virage, minSpeed), 720));
 
@@ -237,21 +228,47 @@ public class Robot {
 	}
 	
 	
+	private void startup(){
+		motorL.setSpeed(1);
+		motorR.setSpeed(1);
+		
+		motorL.backward();
+		motorR.backward();
+	}
+	
+	private void move_until_white(){
+		int speed = 300;
+
+
+		motorL.setAcceleration(8000);
+		motorR.setAcceleration(8000);
+		ReadColor read = readColor();
+		int marge = 50;
+		do{
+
+			motorL.setSpeed(speed);
+			motorR.setSpeed(speed);
+			Delay.msDelay(delay);
+			read = readColor();
+			speed += 5;
+		}while(read.getAverage() <= objectif.getAverage() - marge);
+
+	}
+	
+	private void initBegin(){
+		begin = - motorL.getTachoCount();
+	}
+	
 	private void takeBend(){
 		motorL.setSpeed(300);
-		motorR.setSpeed(1);
+		motorR.setSpeed(20);
 		ReadColor read = readColor();
-		
+		int marge = 50;
 		do{
 			Delay.msDelay(delay);
 			read = readColor();
-		}while(read.getAverage() >= black.getAverage() + 50);
-		
-		do{
-			read = readColor(); 
-			Delay.msDelay(delay);
-		}while(read.getAverage() <= black.getAverage() + 50);
-			
+		}while(read.getAverage() >= black.getAverage() + marge);
+
 	}
 	
 	

@@ -36,9 +36,16 @@ public class TestGyro {
 	public static void main(String[] args) throws Exception {
 		
 		init();
-
+		sample[0] = 0;
+		float before = 0;
+		do{
+			before = sample[position_angle_dans_sample];
+			Motor.A.rotate(360, true);
+			sampleProvider.fetchSample(sample, 0);
+			System.out.println(sample[position_angle_dans_sample]);
+		}while(sample[position_angle_dans_sample]  <= before);
 		//calibrate();
-		
+		/*
 		for( int i = 0; i < 4 ; i++ ){
 			turn(-90);
 			Delay.msDelay(500);
@@ -47,6 +54,7 @@ public class TestGyro {
 			turn(45);
 			Delay.msDelay(500);
 		}
+		*/
 		
 	}
 	
