@@ -99,7 +99,6 @@ public class Robot {
 		//Sérialiser les valeurs ?
 		//calibrateBlackAndWhite();
 		//System.out.println("black: " + black + "\n white: " +white);
-		Delay.msDelay(10000);
 		calibrateGyro();
 	}
 	
@@ -165,7 +164,7 @@ public class Robot {
 
 		int read ;
 		
-		kp = .2;
+		kp = .25;
 		
 		
 		initBegin();
@@ -261,18 +260,24 @@ public class Robot {
 			motorR.setSpeed(speed);
 			Delay.msDelay(delay);
 		}while(read >= objectif);
-		motorL.setSpeed(50);
-		motorR.setSpeed(50);
+		/*speed = 50;
+		motorL.setSpeed(speed);
+		motorR.setSpeed(speed);
 		do{
 			read = readRedMode();
 			Delay.msDelay(delay);
 		}while(read <= objectif*1.3);
 		
+		*/
 		motorR.backward();
-		motorL.setSpeed(1);
+		
 		motorR.setSpeed(1);
+		motorL.setSpeed(1);
+		
+		Delay.msDelay(200);
+		
 		Sound.buzz();
-		return speed;
+		return 1;
 	}
 	
 	
