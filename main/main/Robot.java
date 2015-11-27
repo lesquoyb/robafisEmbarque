@@ -20,6 +20,30 @@ public class Robot {
 	private SampleProvider redSampler;
 	private EV3ColorSensor colorSensor;
 	private float[] sample;
+	
+	public class Historic{
+		int colors[] = new int[18000];
+		long gyro[] = new long[18000];
+		int index = 0;
+		
+		public void record(int color, long angle){
+			colors[index] = color;
+			gyro[index] = angle;
+			index++;
+		}
+		
+		public byte[] getHistoric(){
+			String color = "colors: ", gyro = "gyro: ";
+			for(int i = 0 ; i < index+1 ;i++){
+				color += Integer.toString(colors[i]) + " ";
+			}
+			for(int i = 0; i < index+1; i++){
+				gyro += Long.toString(this.gyro[i]) + " ";
+			}
+			return (color + "\n" + gyro).getBytes();
+		}
+
+	}
 
 	private void initColorSensor(){
 		colorSensor = new EV3ColorSensor(LocalEV3.get().getPort("S3"));
@@ -73,11 +97,13 @@ public class Robot {
 	
 	public enum Modes {Teleguide, FollowLine};
 	public BluetoothServer server;
+	public Historic historic;
 	
 	public Robot() throws Exception{
 
-	//	initBluetooth();
-	//	
+		initBluetooth();
+		
+		historic = new Historic();
 		initColorSensor();
 		initGyro();
 	}
@@ -136,24 +162,29 @@ public class Robot {
 		followLine(selectedColor);
 	}
 
-	private int colorID = Color.NONE;
 	public boolean colorDetected(int goal) {
-		colorID = readColor();
-		if ( colorID == goal){
+
+		//TODO: empêcher de valider avec les mauvaises valeurs de gyro/cm parcourus
+		if ( 	last_pos != 0 &&(	( (getTacho() - last_pos )/tacho_per_cm  > 15 && goal == Color.RED)
+				||	( (getTacho() - last_pos )/tacho_per_cm   > 50 && goal == Color.YELLOW)
+				|| 	( (getTacho() - last_pos )/tacho_per_cm   > 111 && goal == Color.GREEN))
+				||	( readColor() == goal)
+				){
 			return true;
 		}
 		return false;
-		
+	
 	}
 
-	public int objectif = 135;
+	public int objectif = 170;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
 	private long begin;
-	private final int INIT_SPEED = 100, MAX_SPEED = 250;//550;
+	private final int INIT_SPEED = 100, MAX_SPEED = 350;//550;
+	private long last_pos = 0 ;
 	public void followLine(int color) throws Exception{
 		
 		startup();
-		
+		int i = 0;
 		//move_until_white();
 		
 		int baseSpeed = 1,
@@ -164,7 +195,7 @@ public class Robot {
 
 		int read ;
 		
-		kp = .25;
+		kp = .2;
 		
 		
 		initBegin();
@@ -181,6 +212,10 @@ public class Robot {
 				if ( isInWhiteSinceTooLong()){ 
 					baseSpeed = takeBend();
 					initBegin();
+					
+					if(last_pos == 0 && getGyroValue() % 360 < -150 ){
+						last_pos = getTacho();
+					}
 					continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
 				}
 			}
@@ -192,9 +227,8 @@ public class Robot {
 			
 			motorL.setSpeed((int) Math.min( Math.max( baseSpeed - virage, minSpeed), 720));
 			motorR.setSpeed((int) Math.min( Math.max( baseSpeed + virage, minSpeed), 720));
-
+			record(read,getTacho());
 			Delay.msDelay(delay);
-
 		}
 		motorR.setSpeed(0);
 		motorL.setSpeed(0);
@@ -204,7 +238,12 @@ public class Robot {
 
 		Sound.beep();
 		
+		//this.server.sendHistoric(historic);
 		//this.server.listen();
+	}
+	
+	private void record(int color, long angle){
+		historic.record(color, angle);
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){
@@ -215,10 +254,10 @@ public class Robot {
 	private long getTacho(){
 		return - (motorL.getTachoCount() + motorR.getTachoCount())/2;
 	}
-	private final double wheel_diam = 5.5;//TODO: refaire une mesure précise
+	private final double wheel_diam = 7;//TODO: refaire une mesure précise
 	private final double perim = wheel_diam * Math.PI;
 	private final double tacho_per_cm = 360/perim;
-	private final double max_cm_in_white = 5.5;
+	private double max_cm_in_white = 10;
 	private boolean isInWhiteSinceTooLong(){
 		 return getTacho() - begin >= tacho_per_cm * max_cm_in_white;
 	}
@@ -248,40 +287,53 @@ public class Robot {
 	 */
 	private int takeBend(){
 		int speed = 1;
-		motorR.forward();
+		long prev = getGyroValue();
 		motorL.setSpeed(speed);
-		motorR.setSpeed(speed);
-		Sound.beep();
+		motorR.forward();
+		motorR.setSpeed(1);
+		
 		int read;
 		do{
 			read = readRedMode();
-			speed = incSpeed(speed, Math.max(read - objectif, 1));
+			speed = incSpeed(speed, (int) (Math.max(read - objectif, 1)*1.5) );
+
 			motorL.setSpeed(speed);
 			motorR.setSpeed(speed);
 			Delay.msDelay(delay);
+			record(read, getGyroValue());
 		}while(read >= objectif);
-		/*speed = 50;
-		motorL.setSpeed(speed);
-		motorR.setSpeed(speed);
-		do{
-			read = readRedMode();
-			Delay.msDelay(delay);
-		}while(read <= objectif*1.3);
+
+		if(Math.abs(prev - getGyroValue()) > 45){
+			do{
+				read = readRedMode();
+				speed = incSpeed(speed, (int) (Math.max(180 - read , 1)) );
+	
+				motorL.setSpeed(speed);
+				motorR.setSpeed(speed);
+				Delay.msDelay(delay);
+				record(read, getGyroValue());
+			}while(read < 180);
+		}
 		
-		*/
-		motorR.backward();
-		
-		motorR.setSpeed(1);
 		motorL.setSpeed(1);
+		motorR.setSpeed(1);
 		
 		Delay.msDelay(200);
-		
 		Sound.buzz();
+		
+		motorR.backward();
+		
+		
 		return 1;
 	}
 	
 	
+	public int getGyroValue(){
+		gyroSampler.fetchSample(gyroSample, 0);
+		return (int)gyroSample[0];
+	}
 
+	
 	public void turn(int angle){
 
 		//TODO: ne pas oublier de changer la rotation si on change de moteur pivot

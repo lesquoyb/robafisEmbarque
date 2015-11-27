@@ -1,11 +1,14 @@
 package main;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import main.Robot.Historic;
 import main.cor.ParserFacade;
 
 public class BluetoothServer {
@@ -14,6 +17,7 @@ public class BluetoothServer {
 
 	private ServerSocket server;
 	private BufferedReader bufferReader;
+	private BufferedOutputStream bos;
 	private Socket connected ;
 	private Robot robot;
 	public BluetoothServer(Robot r) {
@@ -21,7 +25,7 @@ public class BluetoothServer {
 		
 	}
 
-	private void establishConnection(){
+	public void establishConnection(){
 		
 		boolean notConnected = true;
 		while(notConnected){
@@ -39,6 +43,17 @@ public class BluetoothServer {
 		}
 	}
 	
+	public void sendHistoric(Historic h){
+		if(connected != null){
+			try {
+				bos = new BufferedOutputStream(connected.getOutputStream());
+				bos.write(h.getHistoric());
+				bos.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	public void listen() {
 		
@@ -52,8 +67,10 @@ public class BluetoothServer {
 				
 				fromclient = bufferReader.readLine();
 				parser.parse(fromclient, robot);
-				/*
+				
 				System.out.println("received: " + fromclient);
+			
+				/*
 				if(parser.parse(fromclient, robot)){
 					System.out.println("processed");
 				}
