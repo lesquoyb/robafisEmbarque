@@ -1,16 +1,12 @@
 package main;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.Calendar;
-import java.util.Date;
-
 import lejos.hardware.Sound;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.motor.Motor;
 import lejos.hardware.motor.NXTRegulatedMotor;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3GyroSensor;
+import lejos.robotics.Color;
 import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import lejos.utility.TextMenu;
@@ -21,54 +17,43 @@ public class Robot {
 
 
 	private SampleProvider colorSampler;
-	private float[] colorSample;
+	private SampleProvider redSampler;
 	private EV3ColorSensor colorSensor;
+	private float[] sample;
+
 	private void initColorSensor(){
 		colorSensor = new EV3ColorSensor(LocalEV3.get().getPort("S3"));
-		colorSampler = colorSensor.getRedMode();
-		colorSample = new float[3];
+		redSampler = colorSensor.getRedMode();
+		sample = new float[3];
+		colorSampler = colorSensor.getColorIDMode();
+		
 	}
 
-	public ReadColor black = new ReadColor(15, 15, 15), 
-			white = new ReadColor(255,255,255),
-			objectif = new ReadColor(135, 135, 135);
-	private void calibrateBlackAndWhite(){
-		white = new ReadColor(0, 0, 0);
-		black = new ReadColor(255, 255, 255);
-		ReadColor tmp;
-		for(int i = 0 ; i < 36 ; i++){
-			turn(10);
-			tmp = readColor();
-			if(tmp.isClearerThan(white)){
-				white = tmp;
-			}
-			else if (tmp.isDarkerThan(black)){
-				black = tmp;
-			}
-		}
-		int average = white.getAverage() - black.getAverage();
-		objectif = new ReadColor(average, average, average);
-	}
-	public ReadColor readColor(){
-		colorSampler.fetchSample(colorSample, 0);
-		return new ReadColor(Math.min( (int) (colorSample[0]*255), 255), 
-				Math.min( (int) (colorSample[0]*255), 255),
-				Math.min( (int) (colorSample[0]*255), 255)); 
-		//valide seulement avec lecture d'une couleur
-		//TODO: avec les trois													
-	}
 
+
+	public int readRedMode(){
+		redSampler.fetchSample(sample, 0);
+		return (int) (sample[0]*255);
+	}
+	
+	public int readColor(){
+		colorSampler.fetchSample(sample, 0);
+		return (int) sample[0];
+	}
 
 
 	private EV3GyroSensor gyro;
 	private SampleProvider gyroSampler;
 	private static float[] gyroSample;
-	private final NXTRegulatedMotor pivotRotation = Motor.B;
-	private final NXTRegulatedMotor motorRotation = Motor.A;
-	private final NXTRegulatedMotor motorL = Motor.B;
-	private final NXTRegulatedMotor motorR = Motor.A;
+	public final NXTRegulatedMotor pivotRotation = Motor.B;
+	public final NXTRegulatedMotor motorRotation = Motor.A;
+	public final NXTRegulatedMotor motorL = Motor.B;
+	public final NXTRegulatedMotor motorR = Motor.A;
+	public final NXTRegulatedMotor armsMotor = Motor.D;
+	
+	
 	private void  initGyro(){
-		gyro = new EV3GyroSensor(LocalEV3.get().getPort("S2"));
+		gyro = new EV3GyroSensor(LocalEV3.get().getPort("S1"));
 		gyroSampler =  gyro.getAngleMode();
 		gyroSample = new float[1];
 	}
@@ -87,21 +72,20 @@ public class Robot {
 
 	
 	public enum Modes {Teleguide, FollowLine};
-
+	public BluetoothServer server;
 	
 	public Robot() throws Exception{
 
-		//initBluetooth();
+	//	initBluetooth();
+	//	
 		initColorSensor();
-		//initGyro();
+		initGyro();
 	}
 
+	
 
-	private void initBluetooth() throws IOException{
-		
-		BluetoothServer server = new BluetoothServer(this);
-		Thread t = new Thread(server);
-		t.start();
+	private void initBluetooth(){
+		server = new BluetoothServer(this);
 		
 	}
 
@@ -113,8 +97,8 @@ public class Robot {
 
 	public void calibrer(){
 		//SÃ©rialiser les valeurs ?
-		calibrateBlackAndWhite();
-		System.out.println("black: " + black + "\n white: " +white);
+		//calibrateBlackAndWhite();
+		//System.out.println("black: " + black + "\n white: " +white);
 		Delay.msDelay(10000);
 		calibrateGyro();
 	}
@@ -125,18 +109,18 @@ public class Robot {
 		String[] menu = new String[]{"Rouge","Vert","Jaune", "Calibrer", "Quitter"};
 		TextMenu m = new TextMenu(menu);
 		int index = m.select();
-		ReadColor selectedColor = null;
+		int selectedColor = 0;
 		switch(menu[index]){
 		case "Rouge":
-			selectedColor = ReadColor.Red;
+			selectedColor = Color.RED;
 			break;
 
 		case "Vert":
-			selectedColor = ReadColor.Green;				
+			selectedColor = Color.GREEN;				
 			break;
 
 		case "Jaune":
-			selectedColor = ReadColor.Yellow;
+			selectedColor = Color.YELLOW;
 			break;
 		case "Calibrer":
 			m.quit();
@@ -153,122 +137,142 @@ public class Robot {
 		followLine(selectedColor);
 	}
 
-
-	private boolean colorDetected(ReadColor read, ReadColor goal) throws Exception{
-		//TODO
-		//colorSensor.setFloodlight(lejos.robotics.Color.BLUE);
-		
+	private int colorID = Color.NONE;
+	public boolean colorDetected(int goal) {
+		colorID = readColor();
+		if ( colorID == goal){
+			return true;
+		}
 		return false;
+		
 	}
 
-
+	public int objectif = 135;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
-	private final double wheel_diam = 5.5;
-	private final double perim = wheel_diam * Math.PI;
-	private final double tacho_per_cm = 360/perim;//TODO: cette valeur est fauuuuuuuuuuuuuuuuuuuuuuuuuuuusssssssssseeeeeeeeeeeeeeeeeeee
-	private final double max_cm_in_white = 5.5;
-	private final double marge_cm_in_white = .0; //TODO: j'ai fait à l'arrache, vérifier/affiner les valeurs
 	private long begin;
-	public void followLine(ReadColor color) throws Exception{
+	private final int INIT_SPEED = 100, MAX_SPEED = 250;//550;
+	public void followLine(int color) throws Exception{
 		
 		startup();
 		
 		//move_until_white();
 		
-		int baseSpeed = 600,
+		int baseSpeed = 1,
 			minSpeed = 20;
 
 
 		double kp , virage, error;
 
-		ReadColor read = readColor() ;
-
-
-		colorSensor.setFloodlight(true);
+		int read ;
 		
-		kp = .35;
+		kp = .2;
 		
-		int marge = 50;
 		
 		initBegin();
 		
-		while( ! colorDetected(read, color) ){
+		while( ! colorDetected(color) ){
 			
-			read = readColor();
+			read = readRedMode();
 
-			error = objectif.getAverage() - read.getAverage();
+			error = objectif - read;
 			
 			virage = kp * error ;
 			
-			if( read.getAverage()  >= (white.getAverage() - marge) ){
-				System.out.println("blanc");
-				if ( - motorL.getTachoCount() - begin >= tacho_per_cm * (max_cm_in_white+marge_cm_in_white) ){
-				
-					takeBend();
-
-					System.out.println("virage");
+			if(isInWhite(read)){
+				if ( isInWhiteSinceTooLong()){ 
+					baseSpeed = takeBend();
 					initBegin();
+					continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
 				}
 			}
 			else{
 				initBegin();
 			}
 			
+			baseSpeed = incSpeed(baseSpeed, MAX_SPEED);
+			
 			motorL.setSpeed((int) Math.min( Math.max( baseSpeed - virage, minSpeed), 720));
-			motorR.setSpeed((int) Math.min( Math.max(  baseSpeed +  virage, minSpeed), 720));
+			motorR.setSpeed((int) Math.min( Math.max( baseSpeed + virage, minSpeed), 720));
 
 			Delay.msDelay(delay);
 
 		}
-	
+		motorR.setSpeed(0);
+		motorL.setSpeed(0);
+
 		motorL.stop();
 		motorR.stop();
 
 		Sound.beep();
+		
+		//this.server.listen();
+	}
+
+	private int incSpeed(int initSpeed, int max_speed){
+		return Math.min(initSpeed + 10, max_speed);
 	}
 	
 	
+	private long getTacho(){
+		return - (motorL.getTachoCount() + motorR.getTachoCount())/2;
+	}
+	private final double wheel_diam = 5.5;//TODO: refaire une mesure précise
+	private final double perim = wheel_diam * Math.PI;
+	private final double tacho_per_cm = 360/perim;
+	private final double max_cm_in_white = 5.5;
+	private boolean isInWhiteSinceTooLong(){
+		 return getTacho() - begin >= tacho_per_cm * max_cm_in_white;
+	}
 	private void startup(){
 		motorL.setSpeed(1);
 		motorR.setSpeed(1);
 		
+		motorL.resetTachoCount();
+		motorR.resetTachoCount();
 		motorL.backward();
 		motorR.backward();
 	}
 	
-	private void move_until_white(){
-		int speed = 300;
-
-
-		motorL.setAcceleration(8000);
-		motorR.setAcceleration(8000);
-		ReadColor read = readColor();
-		int marge = 50;
+	
+	private boolean isInWhite(int read){
+		//return colorID == Color.WHITE;
+		return  read >= 205;
+	}
+	private void initBegin(){
+		begin = getTacho();
+	}
+	
+	
+	/**
+	 * 
+	 * @return la vitesse des moteurs à la sortie du virage
+	 */
+	private int takeBend(){
+		int speed = 1;
+		motorR.forward();
+		motorL.setSpeed(speed);
+		motorR.setSpeed(speed);
+		Sound.beep();
+		int read;
 		do{
-
+			read = readRedMode();
+			speed = incSpeed(speed, Math.max(read - objectif, 1));
 			motorL.setSpeed(speed);
 			motorR.setSpeed(speed);
 			Delay.msDelay(delay);
-			read = readColor();
-			speed += 5;
-		}while(read.getAverage() <= objectif.getAverage() - marge);
-
-	}
-	
-	private void initBegin(){
-		begin = - motorL.getTachoCount();
-	}
-	
-	private void takeBend(){
-		motorL.setSpeed(300);
-		motorR.setSpeed(20);
-		ReadColor read = readColor();
-		int marge = 50;
+		}while(read >= objectif);
+		motorL.setSpeed(50);
+		motorR.setSpeed(50);
 		do{
+			read = readRedMode();
 			Delay.msDelay(delay);
-			read = readColor();
-		}while(read.getAverage() >= black.getAverage() + marge);
-
+		}while(read <= objectif*1.3);
+		
+		motorR.backward();
+		motorL.setSpeed(1);
+		motorR.setSpeed(1);
+		Sound.buzz();
+		return speed;
 	}
 	
 	

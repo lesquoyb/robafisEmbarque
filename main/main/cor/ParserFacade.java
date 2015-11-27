@@ -1,10 +1,6 @@
 package main.cor;
 
-import java.io.File;
-
-import lejos.hardware.Sound;
 import main.Robot;
-import main.Robot.Modes;
 
 /**
  * Cette classe est une facade du Design Pattern Chain Of Responsibility 
@@ -21,6 +17,7 @@ public class ParserFacade {
 		first = new ExpertParserDirection();
 		first.ajouterSuivant(new ExpertParserSpeed());
 		first.ajouterSuivant(new ExpertParserMode());
+		first.ajouterSuivant(new ExpertTrigger());
 		
 	}
 	

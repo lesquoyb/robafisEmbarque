@@ -1,16 +1,14 @@
 package main.cor;
 
-import lejos.hardware.motor.Motor;
 import main.Robot;
-import main.Robot.Modes;
 
 public class ExpertParserDirection extends ExpertParser {
 
 	
 
-	static final double dead_zone = 0.2;
-	static final int XMAXSPEED = 500;
-	static final int YMAXSPEED = 300;
+	static final double dead_zone = 0.3;
+	static final int XMAXSPEED = 50;
+	static final int YMAXSPEED = 50;
 	
 	
 	@Override
@@ -20,26 +18,26 @@ public class ExpertParserDirection extends ExpertParser {
 			double x_speed, y_speed;
 			
 			String[] val = toParse.split(":")[1].split(",");
-			double x = new Double(val[1]);
-			double y = new Double(val[0]);
+			double x = new Double(val[0]);
+			double y = new Double(val[1]);
 			x = apply_dead_zone(x);
 			y = apply_dead_zone(y);
 		
-			x_speed = XMAXSPEED*x;
-			y_speed = YMAXSPEED*y;			
+			x_speed = Math.abs(XMAXSPEED * x);
+			y_speed = YMAXSPEED * y;
 			
 			if (x >= 0){
-				Motor.A.forward();
-				Motor.B.forward();	
-				y_speed = - y_speed;
+				robot.motorL.forward();
+				robot.motorR.forward();	
 	
 			} else {
-				Motor.A.backward();
-				Motor.B.backward();
+				robot.motorL.backward();
+				robot.motorR.backward();
 			}
-	
-			Motor.A.setSpeed((int) (x_speed + y_speed));
-			Motor.B.setSpeed((int) (x_speed - y_speed));
+			int min = 1;
+			System.out.println("received speed: " + x_speed + " " + y_speed);
+			robot.motorL.setSpeed(Math.max((int) (x_speed + y_speed), min));
+			robot.motorR.setSpeed(Math.max((int) (x_speed - y_speed), min));
 			return true;
 		}
 		return false;

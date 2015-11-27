@@ -1,6 +1,6 @@
 package main;
 
-import lejos.hardware.motor.Motor;
+import lejos.robotics.Color;
 import lejos.utility.Delay;
 
 public class Main {
@@ -10,9 +10,9 @@ public class Main {
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
 	private final static double wheel_diam = 5.5;
 	private final static double perim = wheel_diam * Math.PI;
-	private final static double tacho_per_cm = 360/perim;//TODO: cette valeur est fauuuuuuuuuuuuuuuuuuuuuuuuuuuusssssssssseeeeeeeeeeeeeeeeeeee
+	private final static double tacho_per_cm = 360/perim;
 	private final static double max_cm_in_white = 15.0;
-	private final static double marge_cm_in_white = .0; //TODO: j'ai fait à l'arrache, vérifier/affiner les valeurs
+	private final static double marge_cm_in_white = .0; 
 	private static long begin;
 	
 	
@@ -21,20 +21,21 @@ public class Main {
 
 		
 		Robot robot = new Robot();
+		//robot.server.listen();
 		
-		robot.followLine(ReadColor.Red);
+		robot.followLine(Color.RED);
 		
+		/*
 		while(true){
-			System.out.println(robot.readColor().getAverage());
+			System.out.println(robot.readRedMode());
 			Delay.msDelay(10);
 		}
+		*/
+		
+		
 		
 	}
 	
-	
-	private static void initBegin(){
-		begin = - Motor.B.getTachoCount();
-	}
 	
 	
 
