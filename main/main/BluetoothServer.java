@@ -6,10 +6,9 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import lejos.hardware.motor.Motor;
 import main.cor.ParserFacade;
 
-public class BluetoothServer implements Runnable{
+public class BluetoothServer {
 
 	
 
@@ -17,19 +16,33 @@ public class BluetoothServer implements Runnable{
 	private BufferedReader bufferReader;
 	private Socket connected ;
 	private Robot robot;
-	public BluetoothServer(Robot r) throws IOException{
-		server = new ServerSocket (5000);
-		System.out.println ("Waiting connexion ...");
-		connected = server.accept();
-		bufferReader = new BufferedReader(new InputStreamReader (connected.getInputStream()));
-		System.out.println("Command Center found!");
+	public BluetoothServer(Robot r) {
 		robot = r;
+		
 	}
 
+	private void establishConnection(){
+		
+		boolean notConnected = true;
+		while(notConnected){
+			try{
+				server = new ServerSocket (5000);
+				System.out.println ("Waiting connexion ...");
+				connected = server.accept();
+				bufferReader = new BufferedReader(new InputStreamReader (connected.getInputStream()));
+				System.out.println("Command Center found!");
+				notConnected = false;
+			}
+			catch(Exception e){
+				System.out.println("error: " + e.getMessage());
+			}
+		}
+	}
 	
 	
-	@Override
-	public void run() {
+	public void listen() {
+		
+		establishConnection();
 		
 		String fromclient;
 		ParserFacade parser = new ParserFacade();
@@ -38,6 +51,8 @@ public class BluetoothServer implements Runnable{
 			try {
 				
 				fromclient = bufferReader.readLine();
+				parser.parse(fromclient, robot);
+				/*
 				System.out.println("received: " + fromclient);
 				if(parser.parse(fromclient, robot)){
 					System.out.println("processed");
@@ -45,6 +60,7 @@ public class BluetoothServer implements Runnable{
 				else{
 					System.out.println("unprocessed");
 				}
+				*/
 				
 			} catch (IOException e) {
 				
