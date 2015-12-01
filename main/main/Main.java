@@ -1,5 +1,6 @@
 package main;
 
+import lejos.hardware.motor.Motor;
 import lejos.robotics.Color;
 import lejos.utility.Delay;
 
@@ -12,15 +13,19 @@ public class Main {
 
 		
 		Robot robot = new Robot();
-		//robot.server.establishConnection();
-		robot.followLine(Color.GREEN);
+		//Motor.A.setSpeed(1);
+		//Motor.B.setSpeed(1);
+		//robot.turn(90);
+		robot.choisirScenario();
 		
-		/*
+		
 		while(true){
+			
+			robot.readColor();
 			System.out.println(robot.readRedMode());
 			Delay.msDelay(10);
 		}
-		*/
+		
 		
 		
 		

@@ -22,8 +22,10 @@ public class Robot {
 	private float[] sample;
 	
 	public class Historic{
-		int colors[] = new int[18000];
-		long gyro[] = new long[18000];
+		
+		int colors[] = new int[30000];
+		long gyro[] = new long[30000];
+		int distances[] = new int[30000];
 		int index = 0;
 		
 		public void record(int color, long angle){
@@ -33,14 +35,13 @@ public class Robot {
 		}
 		
 		public byte[] getHistoric(){
-			String color = "colors: ", gyro = "gyro: ";
+			String color = "colors: ", gyro = "gyro: ", dist = "dist: ";
 			for(int i = 0 ; i < index+1 ;i++){
 				color += Integer.toString(colors[i]) + " ";
-			}
-			for(int i = 0; i < index+1; i++){
 				gyro += Long.toString(this.gyro[i]) + " ";
+				//dist += Integer.toString(distances[i]) + " ";
 			}
-			return (color + "\n" + gyro).getBytes();
+			return (color + "\n" + gyro + "\n" + dist + "\n").getBytes();
 		}
 
 	}
@@ -69,10 +70,9 @@ public class Robot {
 	private EV3GyroSensor gyro;
 	private SampleProvider gyroSampler;
 	private static float[] gyroSample;
-	public final NXTRegulatedMotor pivotRotation = Motor.B;
-	public final NXTRegulatedMotor motorRotation = Motor.A;
 	public final NXTRegulatedMotor motorL = Motor.B;
 	public final NXTRegulatedMotor motorR = Motor.A;
+	public final NXTRegulatedMotor pivotRotation = motorR;//TODO: en fait c'est pas le pivot c'est l'autre, renommer please
 	public final NXTRegulatedMotor armsMotor = Motor.D;
 	
 	
@@ -82,13 +82,14 @@ public class Robot {
 		gyroSample = new float[1];
 	}
 	static final byte position_angle_dans_sample = 0;
-	static int nombre_de_degre_par_rotation_moteur = 61;
-	static final int rotation_minimale_pour_se_deplacer = 3;//TODO à régler à la main avec le robot final
+	static int nombre_de_degre_par_rotation_moteur = -101;
+	static final int rotation_minimale_pour_se_deplacer = 6;
 	private void calibrateGyro(){
 		gyro.reset();
-		motorRotation.rotate(360);
+		pivotRotation.rotate(360);
 		gyroSampler.fetchSample(gyroSample, 0);
 		nombre_de_degre_par_rotation_moteur = (int)gyroSample[position_angle_dans_sample];
+		System.out.println(nombre_de_degre_par_rotation_moteur);
 	}
 
 	
@@ -101,17 +102,18 @@ public class Robot {
 	
 	public Robot() throws Exception{
 
-		initBluetooth();
 		
 		historic = new Historic();
 		initColorSensor();
 		initGyro();
+		initBluetooth();
 	}
 
 	
 
 	private void initBluetooth(){
 		server = new BluetoothServer(this);
+		server.establishConnection();
 		
 	}
 
@@ -126,6 +128,7 @@ public class Robot {
 		//calibrateBlackAndWhite();
 		//System.out.println("black: " + black + "\n white: " +white);
 		calibrateGyro();
+		
 	}
 	
 	
@@ -158,8 +161,52 @@ public class Robot {
 		default:
 			throw new Exception("Index du menu non géré: " + menu[index]);
 		}
+		
+		followLine(selectedColor);		
+		this.server.sendHistoric(historic);
 		Sound.beep();
-		followLine(selectedColor);
+		turn(90);
+		System.out.println("finito?");
+		this.server.listen();
+		go_home_you_re_drunk(selectedColor);
+	}
+	
+	private void go_home_you_re_drunk(int selectedColor){
+		
+		boolean the_end = false;
+
+		motorL.setSpeed(720);
+		motorR.setSpeed(720);
+		int read;
+
+		initBegin();
+		while( ! the_end ){
+			read = readRedMode();
+			if(isInBlack(read)){
+				if(isInBlackSinceTooLong()){
+					motorR.setSpeed(500);
+					Delay.msDelay(100);
+					read = readRedMode();
+					if(isInBlack(read)){
+						the_end = true;
+					}
+				}
+			}
+			else{
+				initBegin();
+			}
+		}
+		
+		motorL.stop();
+		motorR.stop();
+		Sound.buzz();
+	}
+	
+	public boolean isInBlack(int read){
+		return read <= 40;
+	}
+	public boolean isInBlackSinceTooLong(){
+		return getTacho() - begin >= tacho_per_cm * 3;
 	}
 
 	public boolean colorDetected(int goal) {
@@ -179,12 +226,11 @@ public class Robot {
 	public int objectif = 170;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
 	private long begin;
-	private final int INIT_SPEED = 100, MAX_SPEED = 350;//550;
+	private final int MAX_SPEED = 350;//550;
 	private long last_pos = 0 ;
 	public void followLine(int color) throws Exception{
 		
 		startup();
-		int i = 0;
 		//move_until_white();
 		
 		int baseSpeed = 1,
@@ -230,20 +276,15 @@ public class Robot {
 			record(read,getTacho());
 			Delay.msDelay(delay);
 		}
-		motorR.setSpeed(0);
-		motorL.setSpeed(0);
-
-		motorL.stop();
-		motorR.stop();
-
-		Sound.beep();
 		
-		//this.server.sendHistoric(historic);
-		//this.server.listen();
+		motorR.setSpeed(1);
+		motorL.setSpeed(1);
+
 	}
 	
 	private void record(int color, long angle){
 		historic.record(color, angle);
+		server.sendHistoric(historic);
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){
@@ -273,7 +314,6 @@ public class Robot {
 	
 	
 	private boolean isInWhite(int read){
-		//return colorID == Color.WHITE;
 		return  read >= 205;
 	}
 	private void initBegin(){
@@ -337,16 +377,22 @@ public class Robot {
 	public void turn(int angle){
 
 		//TODO: ne pas oublier de changer la rotation si on change de moteur pivot
+		//TODO: dans l'autre sens aussi
 		gyroSampler.fetchSample(gyroSample, 0);//Degr� actuel
 		angle += gyroSample[position_angle_dans_sample];
+		pivotRotation.setSpeed(0);
+		pivotRotation.stop();
 		float mesure;
-		int relAngle;
+		double relAngle ;
 		do{
 			gyroSampler.fetchSample(gyroSample, 0);
 			mesure = gyroSample[position_angle_dans_sample];
-			relAngle =  (int) ( (angle - mesure) * 100 / nombre_de_degre_par_rotation_moteur);
-			relAngle = (relAngle > 0 ) ? Math.max(relAngle, rotation_minimale_pour_se_deplacer) : Math.min(relAngle, -rotation_minimale_pour_se_deplacer); //Pour éviter de rester bloqué
-			pivotRotation.rotate( - relAngle, false);
+			relAngle = (angle - mesure) * 360 /(double) nombre_de_degre_par_rotation_moteur;
+			relAngle = 		(relAngle > 0 ) 
+						? Math.max(relAngle,  rotation_minimale_pour_se_deplacer) 
+						: Math.min(relAngle, -rotation_minimale_pour_se_deplacer); //Pour éviter de rester bloqué
+
+			pivotRotation.rotate( (int)relAngle, false);	
 			Delay.msDelay(50);
 			//TODO: attention on pourrait rester bloqué, définir un mouvement minimum
 		}while( angle != mesure );

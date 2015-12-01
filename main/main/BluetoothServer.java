@@ -35,6 +35,7 @@ public class BluetoothServer {
 				connected = server.accept();
 				bufferReader = new BufferedReader(new InputStreamReader (connected.getInputStream()));
 				System.out.println("Command Center found!");
+				
 				notConnected = false;
 			}
 			catch(Exception e){
@@ -49,6 +50,8 @@ public class BluetoothServer {
 				bos = new BufferedOutputStream(connected.getOutputStream());
 				bos.write(h.getHistoric());
 				bos.flush();
+				//bos.close();
+				System.out.println("send: " + h.getHistoric().toString());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -57,27 +60,16 @@ public class BluetoothServer {
 	
 	public void listen() {
 		
-		establishConnection();
-		
 		String fromclient;
 		ParserFacade parser = new ParserFacade();
 		
 		while( ! connected.isClosed()) {
 			try {
-				
 				fromclient = bufferReader.readLine();
 				parser.parse(fromclient, robot);
 				
 				System.out.println("received: " + fromclient);
-			
-				/*
-				if(parser.parse(fromclient, robot)){
-					System.out.println("processed");
-				}
-				else{
-					System.out.println("unprocessed");
-				}
-				*/
+				
 				
 			} catch (IOException e) {
 				
