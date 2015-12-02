@@ -19,16 +19,15 @@ public class Main {
 		robot.choisirScenario();
 		
 		
-		while(true){
+		/*while(true){
 			
 			robot.readColor();
 			System.out.println(robot.readRedMode());
 			Delay.msDelay(10);
-		}
+		}*/
 		
 		
-		
-		
+		//robot.server.listen();		
 	}
 	
 	

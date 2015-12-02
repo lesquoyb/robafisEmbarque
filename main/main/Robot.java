@@ -226,7 +226,7 @@ public class Robot {
 	public int objectif = 170;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
 	private long begin;
-	private final int MAX_SPEED = 350;//550;
+	private final int MAX_SPEED = 600;//550;
 	private long last_pos = 0 ;
 	public void followLine(int color) throws Exception{
 		
@@ -288,7 +288,7 @@ public class Robot {
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){
-		return Math.min(initSpeed + 10, max_speed);
+		return Math.min(initSpeed + 20, max_speed);
 	}
 	
 	

@@ -68,7 +68,7 @@ public class BluetoothServer {
 				fromclient = bufferReader.readLine();
 				parser.parse(fromclient, robot);
 				
-				System.out.println("received: " + fromclient);
+				//System.out.println("received: " + fromclient);
 				
 				
 			} catch (IOException e) {
