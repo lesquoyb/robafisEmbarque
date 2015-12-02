@@ -17,7 +17,7 @@ public class ExpertTrigger extends ExpertParser{
 			else{
 				robot.armsMotor.backward();
 			}
-			System.out.println("trig speed: " + x);
+			//System.out.println("trig speed: " + x);
 			robot.armsMotor.setSpeed(x);
 			return true;
 		}

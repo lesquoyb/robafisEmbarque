@@ -14,21 +14,16 @@ public class Main {
 		//Motor.A.setSpeed(1);
 		//Motor.B.setSpeed(1);
 		//robot.turn(90);
-		robot.followLine(Color.RED);
-		//robot.choisirScenario();
-		//robot.turn(90);
-		/*
-		while(true){
-			
+		
+		robot.choisirScenario();
+		
+		
+		/*while(true){
 			robot.readColor();
 			System.out.println(robot.readRedMode());
 			Delay.msDelay(10);
-		}
-		*/
-		
-		
-		
-		
+		}*/
+
 	}
 	
 	

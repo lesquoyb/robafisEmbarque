@@ -113,7 +113,7 @@ public class Robot {
 		historic = new Historic();
 		initColorSensor();
 		initGyro();
-		//initBluetooth();
+		initBluetooth();
 	}
 
 	
@@ -292,7 +292,7 @@ public class Robot {
 	
 	private void record(int color, long angle){
 		historic.record(color, angle, motorL.getSpeed(), motorR.getSpeed());
-		//server.sendHistoric(historic);
+		server.sendHistoric(historic);
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){
