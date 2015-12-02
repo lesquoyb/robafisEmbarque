@@ -25,23 +25,29 @@ public class Robot {
 		
 		int colors[] = new int[30000];
 		long gyro[] = new long[30000];
+		int lSpeed[] = new int[30000];
+		int rSpeed[] = new int[30000];
 		int distances[] = new int[30000];
 		int index = 0;
 		
-		public void record(int color, long angle){
+		public void record(int color, long angle, int lSpeed, int rSpeed){
 			colors[index] = color;
 			gyro[index] = angle;
+			this.lSpeed[index] = lSpeed;
+			this.rSpeed[index] = rSpeed;
 			index++;
 		}
 		
 		public byte[] getHistoric(){
-			String color = "colors: ", gyro = "gyro: ", dist = "dist: ";
+			String color = "colors: ", gyro = "gyro: ", dist = "dist: ", lS = "lSpeed: ", rS = "rSpeed: ";
 			for(int i = 0 ; i < index+1 ;i++){
 				color += Integer.toString(colors[i]) + " ";
 				gyro += Long.toString(this.gyro[i]) + " ";
+				lS += Integer.toString(lSpeed[i]) + " ";
+				rS += Integer.toString(rSpeed[i]) + " ";
 				//dist += Integer.toString(distances[i]) + " ";
 			}
-			return (color + "\n" + gyro + "\n" + dist + "\n").getBytes();
+			return (color + "\n" + gyro + "\n" + dist + "\n" + lS +"\n"+ rS + "\n").getBytes();
 		}
 
 	}
@@ -72,7 +78,8 @@ public class Robot {
 	private static float[] gyroSample;
 	public final NXTRegulatedMotor motorL = Motor.B;
 	public final NXTRegulatedMotor motorR = Motor.A;
-	public final NXTRegulatedMotor pivotRotation = motorR;//TODO: en fait c'est pas le pivot c'est l'autre, renommer please
+	public final NXTRegulatedMotor pivotRotation = Motor.B;
+	public final NXTRegulatedMotor motorRotation = Motor.A;//TODO: en fait c'est pas le pivot c'est l'autre, renommer please
 	public final NXTRegulatedMotor armsMotor = Motor.D;
 	
 	
@@ -106,7 +113,7 @@ public class Robot {
 		historic = new Historic();
 		initColorSensor();
 		initGyro();
-		initBluetooth();
+		//initBluetooth();
 	}
 
 	
@@ -211,11 +218,10 @@ public class Robot {
 
 	public boolean colorDetected(int goal) {
 
-		//TODO: empêcher de valider avec les mauvaises valeurs de gyro/cm parcourus
-		if ( 	last_pos != 0 &&(	( (getTacho() - last_pos )/tacho_per_cm  > 15 && goal == Color.RED)
+		if ( 	last_pos != 0 && (	( (getTacho() - last_pos )/tacho_per_cm  > 15 && goal == Color.RED)
 				||	( (getTacho() - last_pos )/tacho_per_cm   > 50 && goal == Color.YELLOW)
-				|| 	( (getTacho() - last_pos )/tacho_per_cm   > 111 && goal == Color.GREEN))
-				||	( readColor() == goal)
+				|| 	( (getTacho() - last_pos )/tacho_per_cm   > 111 && goal == Color.GREEN)
+				||	( readColor() == goal))
 				){
 			return true;
 		}
@@ -226,7 +232,7 @@ public class Robot {
 	public int objectif = 170;
 	private int delay = 10;//Taux de rafraichissement pendant le suivit de ligne
 	private long begin;
-	private final int MAX_SPEED = 350;//550;
+	private final int MAX_SPEED = (int) 550;//motorL.getMaxSpeed();
 	private long last_pos = 0 ;
 	public void followLine(int color) throws Exception{
 		
@@ -256,13 +262,17 @@ public class Robot {
 			
 			if(isInWhite(read)){
 				if ( isInWhiteSinceTooLong()){ 
-					baseSpeed = takeBend();
-					initBegin();
-					
-					if(last_pos == 0 && getGyroValue() % 360 < -150 ){
-						last_pos = getTacho();
-					}
-					continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
+				//	if(getTacho() / tacho_per_cm > 150){ //pas de virage dans la première partie
+						baseSpeed = takeBend();
+						initBegin();
+						
+						if( 	(last_pos == 0 && getGyroValue() % 360 < -150 )
+							|| 	(last_pos != 0 && getGyroValue() < -360)	){
+							last_pos = getTacho();
+							System.out.println("init last_pos: " +last_pos + " gyro: " + getGyroValue());
+						}
+						continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
+					//}
 				}
 			}
 			else{
@@ -277,14 +287,12 @@ public class Robot {
 			Delay.msDelay(delay);
 		}
 		
-		motorR.setSpeed(1);
-		motorL.setSpeed(1);
 
 	}
 	
 	private void record(int color, long angle){
-		historic.record(color, angle);
-		server.sendHistoric(historic);
+		historic.record(color, angle, motorL.getSpeed(), motorR.getSpeed());
+		//server.sendHistoric(historic);
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){
@@ -380,23 +388,19 @@ public class Robot {
 		//TODO: dans l'autre sens aussi
 		gyroSampler.fetchSample(gyroSample, 0);//Degré actuel
 		angle += gyroSample[position_angle_dans_sample];
-		pivotRotation.setSpeed(0);
-		pivotRotation.stop();
+
+		motorRotation.backward();
+		pivotRotation.forward();
+		pivotRotation.setSpeed(400);
+		motorR.setSpeed(400);
 		float mesure;
-		double relAngle ;
 		do{
 			gyroSampler.fetchSample(gyroSample, 0);
 			mesure = gyroSample[position_angle_dans_sample];
-			relAngle = (angle - mesure) * 360 /(double) nombre_de_degre_par_rotation_moteur;
-			relAngle = 		(relAngle > 0 ) 
-						? Math.max(relAngle,  rotation_minimale_pour_se_deplacer) 
-						: Math.min(relAngle, -rotation_minimale_pour_se_deplacer); //Pour Ã©viter de rester bloquÃ©
-
-			pivotRotation.rotate( (int)relAngle, false);	
-			Delay.msDelay(50);
-			//TODO: attention on pourrait rester bloquÃ©, dÃ©finir un mouvement minimum
-		}while( angle != mesure );
-
+			Delay.msDelay(10);
+		}while( angle > mesure );
+		pivotRotation.stop();
+		motorRotation.stop();
 	}
 
 
