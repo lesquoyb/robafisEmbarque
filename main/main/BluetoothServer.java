@@ -50,8 +50,6 @@ public class BluetoothServer {
 				bos = new BufferedOutputStream(connected.getOutputStream());
 				bos.write(h.getHistoric());
 				bos.flush();
-				//bos.close();
-				System.out.println("send: " + h.getHistoric().toString());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -62,7 +60,14 @@ public class BluetoothServer {
 		
 		String fromclient;
 		ParserFacade parser = new ParserFacade();
-		
+		try {
+			bos = new BufferedOutputStream(connected.getOutputStream());
+			bos.write( ("ready").getBytes());
+			bos.flush();
+			
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		while( ! connected.isClosed()) {
 			try {
 				fromclient = bufferReader.readLine();

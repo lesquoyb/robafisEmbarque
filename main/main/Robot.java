@@ -171,9 +171,8 @@ public class Robot {
 		
 		followLine(selectedColor);		
 		this.server.sendHistoric(historic);
-		Sound.beep();
+
 		turn(90);
-		System.out.println("finito?");
 		this.server.listen();
 		go_home_you_re_drunk(selectedColor);
 	}
@@ -269,7 +268,6 @@ public class Robot {
 						if( 	(last_pos == 0 && getGyroValue() % 360 < -150 )
 							|| 	(last_pos != 0 && getGyroValue() < -360)	){
 							last_pos = getTacho();
-							System.out.println("init last_pos: " +last_pos + " gyro: " + getGyroValue());
 						}
 						continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
 					//}
@@ -292,7 +290,7 @@ public class Robot {
 	
 	private void record(int color, long angle){
 		historic.record(color, angle, motorL.getSpeed(), motorR.getSpeed());
-		server.sendHistoric(historic);
+	//	server.sendHistoric(historic);
 	}
 
 	private int incSpeed(int initSpeed, int max_speed){

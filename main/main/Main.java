@@ -1,7 +1,5 @@
 package main;
 
-import lejos.robotics.Color;
-
 public class Main {
 
 	
