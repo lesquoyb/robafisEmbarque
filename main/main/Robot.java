@@ -169,10 +169,11 @@ public class Robot {
 			throw new Exception("Index du menu non gÃ©rÃ©: " + menu[index]);
 		}
 		
-		followLine(selectedColor);		
-		this.server.sendHistoric(historic);
-
-		turn(90);
+		followLine(selectedColor);
+		Sound.beep();
+		turn(60);
+		motorL.setSpeed(1);
+		motorR.setSpeed(1);
 		this.server.listen();
 		go_home_you_re_drunk(selectedColor);
 	}
@@ -203,9 +204,8 @@ public class Robot {
 			}
 		}
 		
-		motorL.stop();
+		motorL.stop();//TODO: enlever ?
 		motorR.stop();
-		Sound.buzz();
 	}
 	
 	public boolean isInBlack(int read){
@@ -261,12 +261,12 @@ public class Robot {
 			
 			if(isInWhite(read)){
 				if ( isInWhiteSinceTooLong()){ 
-				//	if(getTacho() / tacho_per_cm > 150){ //pas de virage dans la première partie
+				//	if(getTacho() / tacho_per_cm > 150){ //pas de virage dans la premiï¿½re partie
 						baseSpeed = takeBend();
 						initBegin();
 						
 						if( 	(last_pos == 0 && getGyroValue() % 360 < -150 )
-							|| 	(last_pos != 0 && getGyroValue() < -360)	){
+							|| 	(last_pos != 0 && getGyroValue() < -360)	){ //TODO: tester ï¿½a proprement, rï¿½flexion faite ce code merde s'il fait un 360 avant le second virage et qu'il refait des virage dans la derniï¿½re ligne
 							last_pos = getTacho();
 						}
 						continue;//Pour ne pas faire directement un mouvement avec les anciennes valeurs de virage
@@ -301,7 +301,7 @@ public class Robot {
 	private long getTacho(){
 		return - (motorL.getTachoCount() + motorR.getTachoCount())/2;
 	}
-	private final double wheel_diam = 7;//TODO: refaire une mesure précise
+	private final double wheel_diam = 7;//TODO: refaire une mesure prï¿½cise
 	private final double perim = wheel_diam * Math.PI;
 	private final double tacho_per_cm = 360/perim;
 	private double max_cm_in_white = 10;
@@ -314,6 +314,7 @@ public class Robot {
 		
 		motorL.resetTachoCount();
 		motorR.resetTachoCount();
+		gyro.reset();
 		motorL.backward();
 		motorR.backward();
 	}
@@ -329,7 +330,7 @@ public class Robot {
 	
 	/**
 	 * 
-	 * @return la vitesse des moteurs à la sortie du virage
+	 * @return la vitesse des moteurs ï¿½ la sortie du virage
 	 */
 	private int takeBend(){
 		int speed = 1;
@@ -365,7 +366,6 @@ public class Robot {
 		motorR.setSpeed(1);
 		
 		Delay.msDelay(200);
-		Sound.buzz();
 		
 		motorR.backward();
 		
@@ -384,7 +384,7 @@ public class Robot {
 
 		//TODO: ne pas oublier de changer la rotation si on change de moteur pivot
 		//TODO: dans l'autre sens aussi
-		gyroSampler.fetchSample(gyroSample, 0);//Degré actuel
+		gyroSampler.fetchSample(gyroSample, 0);//Degrï¿½ actuel
 		angle += gyroSample[position_angle_dans_sample];
 
 		motorRotation.backward();

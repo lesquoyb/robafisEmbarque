@@ -62,9 +62,8 @@ public class BluetoothServer {
 		ParserFacade parser = new ParserFacade();
 		try {
 			bos = new BufferedOutputStream(connected.getOutputStream());
-			bos.write( ("ready").getBytes());
+			bos.write( ("ready\n").getBytes());
 			bos.flush();
-			
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -72,8 +71,7 @@ public class BluetoothServer {
 			try {
 				fromclient = bufferReader.readLine();
 				parser.parse(fromclient, robot);
-				
-				//System.out.println("received: " + fromclient);
+		
 				
 				
 			} catch (IOException e) {
