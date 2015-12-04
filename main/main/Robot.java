@@ -361,16 +361,11 @@ public class Robot {
 				record(read, getGyroValue());
 			}while(read < 180);
 		}
-		
-		motorL.setSpeed(1);
-		motorR.setSpeed(1);
-		
-		Delay.msDelay(200);
-		
+
 		motorR.backward();
 		
 		
-		return 1;
+		return speed;
 	}
 	
 	
