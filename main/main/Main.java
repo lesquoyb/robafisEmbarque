@@ -1,7 +1,5 @@
 package main;
 
-import main.Robot.Historic;
-
 public class Main {
 
 	
@@ -14,8 +12,7 @@ public class Main {
 		//Motor.A.setSpeed(1);
 		//Motor.B.setSpeed(1);
 		//robot.turn(90);
-		robot.choisirScenario();
-		
+		robot.do_scenario();
 		
 		/*while(true){
 			robot.readColor();

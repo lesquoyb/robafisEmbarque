@@ -4,12 +4,8 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-
-import main.Robot.Historic;
-import main.cor.ParserFacade;
 
 public class BluetoothServer {
 
@@ -56,10 +52,14 @@ public class BluetoothServer {
 		}
 	}
 	
+	
+	
+	static final double trigger_dead_zone = 0.4;
+	int MAX_TRIGGER_SPEED = 300;
+	
 	public void listen() {
 		
 		String fromclient;
-		ParserFacade parser = new ParserFacade();
 		try {
 			bos = new BufferedOutputStream(connected.getOutputStream());
 			bos.write( ("ready\n").getBytes());
@@ -70,9 +70,40 @@ public class BluetoothServer {
 		while( ! connected.isClosed()) {
 			try {
 				fromclient = bufferReader.readLine();
-				parser.parse(fromclient, robot);
-		
-				
+				if(fromclient.startsWith("trigger")){
+					String val = fromclient.split(":")[1];
+					int x = (int) (MAX_TRIGGER_SPEED *  apply_trigger_dead_zone(new Double(val)));
+					if(fromclient.startsWith("triggerL")){
+						robot.armsMotor.forward();
+					}
+					else{
+						robot.armsMotor.backward();
+					}
+					robot.armsMotor.setSpeed(x);
+				}
+				else if( fromclient.startsWith("move:") ){
+
+					int speedR, speedL;
+
+					String[] val = fromclient.split(":")[1].split(",");
+					speedL = new Integer(val[0]);
+					speedR = new Integer(val[1]);
+					robot.motorL.forward();
+					robot.motorR.forward();
+					
+					if( speedL < 0 ){
+						robot.motorL.backward();
+						speedL = -speedL;
+					}
+					if( speedR < 0 ){
+						robot.motorR.backward();
+						speedR = -speedR;
+					}
+					
+					int min = 1;			
+					robot.motorL.setSpeed(Math.max((speedL), min));
+					robot.motorR.setSpeed(Math.max((speedR), min));
+				}
 				
 			} catch (IOException e) {
 				
@@ -81,6 +112,13 @@ public class BluetoothServer {
 			}
 		}
 		
+	}
+	
+	
+	private double apply_trigger_dead_zone(double x){
+		if(x > -trigger_dead_zone && x < trigger_dead_zone)
+			return 0;
+		return x - trigger_dead_zone;
 	}
 
 	
