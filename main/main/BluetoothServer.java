@@ -7,6 +7,9 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import lejos.hardware.Sound;
+import lejos.hardware.lcd.LCD;
+
 public class BluetoothServer {
 
 	
@@ -27,10 +30,11 @@ public class BluetoothServer {
 		while(notConnected){
 			try{
 				server = new ServerSocket (5000);
-				System.out.println ("Waiting connexion ...");
+				LCD.drawString("Waiting connexion ...", 0, 0);
 				connected = server.accept();
 				bufferReader = new BufferedReader(new InputStreamReader (connected.getInputStream()));
-				System.out.println("Command Center found!");
+				LCD.clear();
+				LCD.drawString("Command Center found!", 0, 0);
 				
 				notConnected = false;
 			}
@@ -103,6 +107,13 @@ public class BluetoothServer {
 					int min = 1;			
 					robot.motorL.setSpeed(Math.max((speedL), min));
 					robot.motorR.setSpeed(Math.max((speedR), min));
+				}
+				else if( fromclient.startsWith("end_") ){
+					Sound.beep();
+					Sound.beep();
+					LCD.clear();
+					LCD.drawString("END !!!", 0, 0);
+					break;
 				}
 				
 			} catch (IOException e) {
