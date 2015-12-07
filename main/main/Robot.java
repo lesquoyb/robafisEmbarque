@@ -7,13 +7,14 @@ import lejos.robotics.Color;
 import lejos.utility.Delay;
 import sensors.ColorSensor;
 import sensors.GyroSensor;
+import sensors.UltrasonicSensor;
 
 
 
 public class Robot {
 
 
-	public static final boolean DEBUG  = false;
+	public static final boolean DEBUG  = true;
 	
 	
 	
@@ -31,6 +32,7 @@ public class Robot {
 	public GyroSensor gyroSensor;
 	public ColorSensor colorSensor;
 	public Screen screen;
+	public UltrasonicSensor ultrasonic;
 	
 	public Robot() throws Exception{
 
@@ -41,6 +43,7 @@ public class Robot {
 		colorSensor = new ColorSensor();	
 		gyroSensor = new GyroSensor();
 		screen = new Screen();
+		ultrasonic = new UltrasonicSensor();
 		initBluetooth();
 	}
 
@@ -49,7 +52,6 @@ public class Robot {
 	private void initBluetooth(){
 		server = new BluetoothServer(this);
 		server.establishConnection();
-		
 	}
 
 	
@@ -162,13 +164,16 @@ public class Robot {
 			motorR.setSpeed(speed);
 			motorL.setSpeed(speed);
 			read = colorSensor.readRedMode();
+			if(DEBUG){
+				record(read, gyroSensor.getValue());
+			}
 			Delay.msDelay(delay);
 		}while(read < objectif/2);
 		return speed;
 	}
 	
 	private void record(int color, long angle){
-		historic.record(color, angle, motorL.getSpeed(), motorR.getSpeed());
+		historic.record(color, angle, motorL.getSpeed(), motorR.getSpeed(), ultrasonic.getDistance());
 		server.sendHistoric(historic);
 	}
 
@@ -267,7 +272,7 @@ public class Robot {
 			motorR.setSpeed(speed);
 			Delay.msDelay(10);
 		}while( angle > gyroSensor.getValue() );
-		motorL.stop();
+		motorL.stop(); //TODO: enlever ?
 		motorR.stop();
 	}
 
