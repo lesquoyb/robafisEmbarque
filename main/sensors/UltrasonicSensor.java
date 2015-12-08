@@ -20,4 +20,8 @@ public class UltrasonicSensor {
 		sampler.fetchSample(sample, 0);
 		return sample[0];
 	}
+	
+	public void close(){
+		sensor.close();
+	}
 }

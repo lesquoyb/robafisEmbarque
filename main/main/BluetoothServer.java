@@ -32,6 +32,7 @@ public class BluetoothServer {
 				server = new ServerSocket (5000);
 				LCD.drawString("Waiting connexion ...", 0, 0);
 				connected = server.accept();
+				server.setSoTimeout(0);
 				bufferReader = new BufferedReader(new InputStreamReader (connected.getInputStream()));
 				LCD.clear();
 				LCD.drawString("Command Center found!", 0, 0);
@@ -57,6 +58,17 @@ public class BluetoothServer {
 	}
 	
 	
+	public void sendColor(int color){
+		if(connected != null){
+			try {
+				bos = new BufferedOutputStream(connected.getOutputStream());
+				bos.write(("c:"+Integer.toString(color) + "\n").getBytes());
+				bos.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	static final double trigger_dead_zone = 0.4;
 	int MAX_TRIGGER_SPEED = 300;

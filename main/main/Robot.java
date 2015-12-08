@@ -14,7 +14,7 @@ import sensors.UltrasonicSensor;
 public class Robot {
 
 
-	public static final boolean DEBUG  = true;
+	public static final boolean DEBUG  = false;
 	
 	
 	
@@ -38,12 +38,12 @@ public class Robot {
 
 		if(DEBUG){
 			historic = new Historic();
+			ultrasonic = new UltrasonicSensor();
 		}
 		
 		colorSensor = new ColorSensor();	
 		gyroSensor = new GyroSensor();
 		screen = new Screen();
-		ultrasonic = new UltrasonicSensor();
 		initBluetooth();
 	}
 
@@ -73,9 +73,14 @@ public class Robot {
 		} catch (Exception e) {
 			selected = false;
 		}
-	
+		server.sendColor(selectedColor);
 		followLine(selectedColor);
+		colorSensor.close();
 		turn(50);
+		gyroSensor.close();
+		if(DEBUG){
+			ultrasonic.close();
+		}
 		Sound.beep();
 		
 		motorL.setSpeed(1);
