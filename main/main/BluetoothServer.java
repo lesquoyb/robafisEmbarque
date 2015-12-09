@@ -71,7 +71,7 @@ public class BluetoothServer {
 	}
 	
 	static final double trigger_dead_zone = 0.4;
-	int MAX_TRIGGER_SPEED = 300;
+	int MAX_TRIGGER_SPEED = 200;
 	
 	public void listen() {
 		
@@ -89,6 +89,7 @@ public class BluetoothServer {
 				if(fromclient.startsWith("trigger")){
 					String val = fromclient.split(":")[1];
 					int x = (int) (MAX_TRIGGER_SPEED *  apply_trigger_dead_zone(new Double(val)));
+					robot.armsMotor.setSpeed(1);
 					if(fromclient.startsWith("triggerL")){
 						robot.armsMotor.forward();
 					}
@@ -127,6 +128,7 @@ public class BluetoothServer {
 					LCD.drawString("END !!!", 0, 0);
 					break;
 				}
+				bos.flush();
 				
 			} catch (IOException e) {
 				
