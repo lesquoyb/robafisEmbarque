@@ -12,7 +12,9 @@ public class Main {
 		//Motor.A.setSpeed(1);
 		//Motor.B.setSpeed(1);
 		//robot.turn(90);
-		robot.do_scenario();
+		//robot.do_scenario();
+		robot.server.listen();
+		
 		
 		/*while(true){
 			robot.readColor();

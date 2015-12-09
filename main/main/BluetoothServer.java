@@ -71,7 +71,7 @@ public class BluetoothServer {
 	}
 	
 	static final double trigger_dead_zone = 0.4;
-	int MAX_TRIGGER_SPEED = 200;
+	int MAX_TRIGGER_SPEED = 400;
 	
 	public void listen() {
 		
